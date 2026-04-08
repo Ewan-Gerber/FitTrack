@@ -1,0 +1,334 @@
+import { useState, useEffect } from 'react'
+import client from '../api/client'
+
+const SPLITS = ['Upper', 'Lower', 'Push', 'Pull', 'Cardio']
+
+const MUSCLE_GROUPS = {
+  Upper: ['Chest', 'Back', 'Shoulders', 'Triceps', 'Biceps'],
+  Lower: ['Quads', 'Hamstrings', 'Calves'],
+  Push: ['Chest', 'Shoulders', 'Triceps'],
+  Pull: ['Back', 'Biceps'],
+  Cardio: ['Cardio'],
+}
+
+const DEFAULT_EXERCISES = {
+  Chest: ['Incline Flies', 'Flies', 'Incline Smith'],
+  Back: ['Lat Pulldown', 'Machine Lat Pulldown', 'Rows'],
+  Shoulders: ['Lateral Raises', 'Shoulder Press'],
+  Triceps: ['Press Downs', 'Single Arm', 'Overhead'],
+  Biceps: ['Preacher Curls Single Arm', 'Cable Curls', 'Single Cable Curl'],
+  Quads: ['Hack Squat', 'Pendulum Squat', 'Leg Extensions'],
+  Hamstrings: ['Romanian Deadlift', 'Hamstring Curls'],
+  Calves: ['Standing Calf Raise', 'Seated Calf Raise'],
+  Cardio: ['Padle', 'Tennis', 'Running'],
+}
+
+function fmtDate(d) {
+  return d.toISOString().split('T')[0]
+}
+
+const card = { background: 'var(--surface)', border: '1px solid var(--border)' }
+const muted = { color: 'var(--muted)' }
+
+function getLastSession(split, group, history) {
+  const relevant = history.filter(w => w.split === split)
+  if (!relevant.length) return null
+  const last = relevant[0]
+  const result = {}
+  last.exercises.forEach(e => {
+    result[e.name] = e.sets
+  })
+  return result
+}
+
+export default function Workout() {
+  const [split, setSplit] = useState('Upper')
+  const [date, setDate] = useState(fmtDate(new Date()))
+  const [groups, setGroups] = useState({})
+  const [history, setHistory] = useState([])
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    client.get('/workouts/').then(r => setHistory(r.data))
+  }, [])
+
+  useEffect(() => {
+    const initial = {}
+    MUSCLE_GROUPS[split].forEach(g => {
+      initial[g] = DEFAULT_EXERCISES[g].map(name => ({ name, sets: [] }))
+    })
+    setGroups(initial)
+  }, [split])
+
+  const addSet = (group, exIdx, weight, reps) => {
+    setGroups(prev => ({
+      ...prev,
+      [group]: prev[group].map((ex, i) =>
+        i === exIdx ? { ...ex, sets: [...ex.sets, { weight: parseFloat(weight), reps: parseInt(reps) }] } : ex
+      )
+    }))
+  }
+
+  const removeSet = (group, exIdx, setIdx) => {
+    setGroups(prev => ({
+      ...prev,
+      [group]: prev[group].map((ex, i) =>
+        i === exIdx ? { ...ex, sets: ex.sets.filter((_, j) => j !== setIdx) } : ex
+      )
+    }))
+  }
+
+  const addCustomExercise = (group, name) => {
+    if (!name.trim()) return
+    setGroups(prev => ({
+      ...prev,
+      [group]: [...prev[group], { name: name.trim(), sets: [] }]
+    }))
+  }
+
+  const saveWorkout = async () => {
+    const allExercises = Object.values(groups).flat().filter(e => e.sets.length > 0)
+    if (!allExercises.length) return
+    setSaving(true)
+    try {
+      const res = await client.post('/workouts/', { date, split, exercises: allExercises })
+      setHistory(prev => [res.data, ...prev])
+      const reset = {}
+      MUSCLE_GROUPS[split].forEach(g => {
+        reset[g] = DEFAULT_EXERCISES[g].map(name => ({ name, sets: [] }))
+      })
+      setGroups(reset)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 3000)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const deleteWorkout = async (id) => {
+    await client.delete(`/workouts/${id}`)
+    setHistory(prev => prev.filter(w => w.id !== id))
+  }
+
+  const totalSets = Object.values(groups).flat().reduce((acc, ex) => acc + ex.sets.length, 0)
+
+  return (
+    <div style={{ background: 'var(--bg)', minHeight: '100vh' }}>
+      <div className="page-wrap">
+
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', marginBottom: '1rem' }}>
+          <input
+            type="date"
+            value={date}
+            onChange={e => setDate(e.target.value)}
+            style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '0.5rem', padding: '0.375rem 0.75rem', fontSize: '0.875rem' }}
+          />
+          <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
+            {SPLITS.map(s => (
+              <button
+                key={s}
+                onClick={() => setSplit(s)}
+                style={split === s
+                  ? { background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: '0.5rem', padding: '0.375rem 0.75rem', fontSize: '0.75rem', fontWeight: 500, cursor: 'pointer' }
+                  : { background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--muted)', borderRadius: '0.5rem', padding: '0.375rem 0.75rem', fontSize: '0.75rem', fontWeight: 500, cursor: 'pointer' }
+                }
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {MUSCLE_GROUPS[split].map(group => (
+          <MuscleGroup
+            key={group}
+            group={group}
+            exercises={groups[group] || []}
+            onAddSet={(exIdx, w, r) => addSet(group, exIdx, w, r)}
+            onRemoveSet={(exIdx, si) => removeSet(group, exIdx, si)}
+            onAddExercise={(name) => addCustomExercise(group, name)}
+            lastSession={getLastSession(split, group, history)}
+          />
+        ))}
+
+        <button
+          onClick={saveWorkout}
+          disabled={saving || totalSets === 0}
+          style={{ background: 'var(--accent)', color: '#fff', width: '100%', border: 'none', borderRadius: '0.5rem', padding: '0.625rem', fontSize: '0.875rem', fontWeight: 500, cursor: totalSets === 0 ? 'not-allowed' : 'pointer', opacity: totalSets === 0 ? 0.4 : 1, marginBottom: '1.5rem' }}
+        >
+          {saving ? 'Saving...' : saved ? '✓ Saved!' : `Save workout${totalSets > 0 ? ` (${totalSets} sets)` : ''}`}
+        </button>
+
+        <div style={{ ...card, borderRadius: '0.75rem', padding: '1rem' }}>
+          <h2 style={{ ...muted, fontSize: '0.65rem', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.75rem' }}>Workout history</h2>
+          {history.length === 0 ? (
+            <p style={{ ...muted, fontSize: '0.875rem', textAlign: 'center', padding: '0.75rem 0' }}>No workouts yet</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {history.map(w => (
+                <div key={w.id} style={{ border: '1px solid var(--border)', borderRadius: '0.5rem', padding: '0.75rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <span style={{ background: 'var(--accent-light)', color: 'var(--accent-text)', fontSize: '0.7rem', fontWeight: 500, padding: '0.125rem 0.5rem', borderRadius: '9999px' }}>{w.split}</span>
+                      <span style={{ ...muted, fontSize: '0.75rem' }}>{new Date(w.date).toLocaleDateString('en-ZA', { weekday: 'short', day: 'numeric', month: 'short' })}</span>
+                    </div>
+                    <button onClick={() => deleteWorkout(w.id)} style={{ fontSize: '0.75rem', color: '#f87171', background: 'none', border: 'none', cursor: 'pointer' }}>Delete</button>
+                  </div>
+                  {w.exercises.map(e => (
+                    <div key={e.id} style={{ fontSize: '0.75rem', marginTop: '0.25rem', marginLeft: '0.25rem' }}>
+                      <span style={{ color: 'var(--text)', fontWeight: 500 }}>{e.name}</span>
+                      <span style={muted} className="ml-1">{e.sets.map(s => `${s.weight}kg×${s.reps}`).join(', ')}</span>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function MuscleGroup({ group, exercises, onAddSet, onRemoveSet, onAddExercise, lastSession }) {
+  const [open, setOpen] = useState(true)
+  const [customEx, setCustomEx] = useState('')
+  const totalSets = exercises.reduce((acc, ex) => acc + ex.sets.length, 0)
+
+  return (
+    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '0.75rem', marginBottom: '0.75rem' }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.625rem 1rem', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <span style={{ color: 'var(--text)', fontSize: '0.875rem', fontWeight: 500 }}>{group}</span>
+          {totalSets > 0 && (
+            <span style={{ background: 'var(--accent-light)', color: 'var(--accent-text)', fontSize: '0.7rem', padding: '0.125rem 0.375rem', borderRadius: '9999px' }}>{totalSets} sets</span>
+          )}
+        </div>
+        <span style={{ color: 'var(--muted)', fontSize: '0.75rem' }}>{open ? '▲' : '▼'}</span>
+      </button>
+
+      {open && (
+        <div style={{ borderTop: '1px solid var(--border)', padding: '0 1rem 0.75rem' }}>
+          {exercises.map((ex, ei) => (
+            <ExerciseRow
+              key={ei}
+              exercise={ex}
+              lastSets={lastSession?.[ex.name] || null}
+              onAddSet={(w, r) => onAddSet(ei, w, r)}
+              onRemoveSet={(si) => onRemoveSet(ei, si)}
+            />
+          ))}
+          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+            <input
+              type="text"
+              placeholder="Add exercise..."
+              value={customEx}
+              onChange={e => setCustomEx(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') { onAddExercise(customEx); setCustomEx('') } }}
+              style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', flex: 1, borderRadius: '0.5rem', padding: '0.375rem 0.75rem', fontSize: '0.75rem' }}
+            />
+            <button
+              onClick={() => { onAddExercise(customEx); setCustomEx('') }}
+              style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--muted)', borderRadius: '0.5rem', padding: '0.375rem 0.75rem', fontSize: '0.75rem', cursor: 'pointer' }}
+            >
+              Add
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ExerciseRow({ exercise, onAddSet, onRemoveSet, lastSets }) {
+  const [weight, setWeight] = useState('')
+  const [reps, setReps] = useState('')
+  const [open, setOpen] = useState(false)
+
+  const handleAdd = () => {
+    if (!weight || !reps) return
+    onAddSet(weight, reps)
+    setWeight('')
+    setReps('')
+  }
+
+  return (
+    <div style={{ borderBottom: '1px solid var(--border)', padding: '0.5rem 0' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <button onClick={() => setOpen(o => !o)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text)', fontSize: '0.875rem', textAlign: 'left' }}>
+            {exercise.name}
+            {exercise.sets.length > 0 && (
+              <span style={{ color: 'var(--muted)', marginLeft: '0.5rem', fontSize: '0.75rem' }}>{exercise.sets.length} set{exercise.sets.length > 1 ? 's' : ''}</span>
+            )}
+          </button>
+          {lastSets && lastSets.length > 0 && exercise.sets.length === 0 && (
+            <div style={{ fontSize: '0.7rem', color: 'var(--muted)', marginTop: '0.125rem' }}>
+              Last: {lastSets.map(s => `${s.weight}kg×${s.reps}`).join(', ')}
+            </div>
+          )}
+        </div>
+        <button onClick={() => setOpen(o => !o)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', fontSize: '0.75rem' }}>
+          {open ? 'Done' : '+ Log'}
+        </button>
+      </div>
+
+      {exercise.sets.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem', marginTop: '0.25rem' }}>
+          {exercise.sets.map((s, si) => (
+            <span
+              key={si}
+              onClick={() => onRemoveSet(si)}
+              style={{ background: 'var(--accent-light)', color: 'var(--accent-text)', fontSize: '0.7rem', padding: '0.125rem 0.5rem', borderRadius: '9999px', cursor: 'pointer' }}
+              title="Click to remove"
+            >
+              {s.weight}kg×{s.reps}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {open && (
+        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', alignItems: 'center' }}>
+          <input
+            type="number"
+            placeholder={lastSets?.[0] ? `${lastSets[0].weight}` : 'kg'}
+            value={weight}
+            onChange={e => setWeight(e.target.value)}
+            style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', width: '5rem', borderRadius: '0.5rem', padding: '0.375rem 0.5rem', fontSize: '0.75rem' }}
+          />
+          <input
+            type="number"
+            placeholder={lastSets?.[0] ? `${lastSets[0].reps}` : 'reps'}
+            value={reps}
+            onChange={e => setReps(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleAdd()}
+            style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', width: '5rem', borderRadius: '0.5rem', padding: '0.375rem 0.5rem', fontSize: '0.75rem' }}
+          />
+          <button
+            onClick={handleAdd}
+            style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: '0.5rem', padding: '0.375rem 0.75rem', fontSize: '0.75rem', cursor: 'pointer' }}
+          >
+            + Set
+          </button>
+          {lastSets && lastSets.length > 0 && (
+            <button
+              onClick={() => {
+                lastSets.forEach(s => onAddSet(s.weight, s.reps))
+                setOpen(false)
+              }}
+              style={{ background: 'var(--green-light)', color: 'var(--green-text)', border: 'none', borderRadius: '0.5rem', padding: '0.375rem 0.75rem', fontSize: '0.7rem', cursor: 'pointer', whiteSpace: 'nowrap' }}
+              title="Copy last session sets"
+            >
+              Repeat last
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
