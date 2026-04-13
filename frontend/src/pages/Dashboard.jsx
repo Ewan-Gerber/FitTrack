@@ -26,16 +26,21 @@ const accent = { color: 'var(--accent)' }
 export default function Dashboard() {
   const [days, setDays] = useState([])
   const [workouts, setWorkouts] = useState([])
+  const [bodyWeights, setBodyWeights] = useState([])
   const [stepsInput, setStepsInput] = useState('')
-  const [saving, setSaving] = useState(false)
+  const [weightInput, setWeightInput] = useState('')
+  const [savingSteps, setSavingSteps] = useState(false)
+  const [savingWeight, setSavingWeight] = useState(false)
   const today = fmtDate(new Date())
 
   useEffect(() => {
     client.get('/days/').then(r => setDays(r.data))
     client.get('/workouts/').then(r => setWorkouts(r.data))
+    client.get('/bodyweight/').then(r => setBodyWeights(r.data))
   }, [])
 
   const todayData = days.find(d => d.date === today)
+  const todayWeight = bodyWeights[0]
   const week = getWeekDates()
 
   const stepStreak = () => {
@@ -54,13 +59,25 @@ export default function Dashboard() {
 
   const saveSteps = async () => {
     if (!stepsInput) return
-    setSaving(true)
+    setSavingSteps(true)
     try {
       const res = await client.post('/days/', { date: today, steps: parseInt(stepsInput) })
       setDays(prev => [...prev.filter(d => d.date !== today), res.data])
       setStepsInput('')
     } finally {
-      setSaving(false)
+      setSavingSteps(false)
+    }
+  }
+
+  const saveWeight = async () => {
+    if (!weightInput) return
+    setSavingWeight(true)
+    try {
+      const res = await client.post('/bodyweight/', { date: today, weight: parseFloat(weightInput) })
+      setBodyWeights(prev => [res.data, ...prev.filter(w => w.date !== today)])
+      setWeightInput('')
+    } finally {
+      setSavingWeight(false)
     }
   }
 
@@ -78,7 +95,7 @@ export default function Dashboard() {
           {[
             { val: stepStreak(), label: 'Step streak' },
             { val: `${week.filter(d => days.find(x => x.date === fmtDate(d) && x.steps >= 8000)).length}/7`, label: 'Steps this week' },
-            { val: week.filter(d => gymDates.has(fmtDate(d))).length, label: 'Gym sessions' },
+            { val: todayWeight ? `${todayWeight.weight}kg` : '--', label: 'Body weight' },
           ].map(({ val, label }) => (
             <div key={label} style={{ ...card, borderRadius: '0.75rem', padding: '0.75rem', textAlign: 'center' }}>
               <div style={{ ...accent, fontSize: '1.5rem', fontWeight: 700 }}>{val}</div>
@@ -122,30 +139,63 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div style={{ ...card, borderRadius: '0.75rem', padding: '1rem', marginBottom: '0.75rem' }}>
-          <h2 style={{ ...muted, fontSize: '0.65rem', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.75rem' }}>Log today's steps</h2>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <input
-              type="number"
-              placeholder={todayData ? `Current: ${todayData.steps.toLocaleString()}` : 'e.g. 8500'}
-              value={stepsInput}
-              onChange={e => setStepsInput(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && saveSteps()}
-              style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', flex: 1, borderRadius: '0.5rem', padding: '0.5rem 0.75rem', fontSize: '0.875rem' }}
-            />
-            <button
-              onClick={saveSteps}
-              disabled={saving}
-              style={{ background: 'var(--accent)', color: '#fff', borderRadius: '0.5rem', padding: '0.5rem 1rem', fontSize: '0.875rem', fontWeight: 500, border: 'none', cursor: 'pointer', opacity: saving ? 0.5 : 1 }}
-            >
-              {saving ? 'Saving...' : 'Save'}
-            </button>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
+          <div style={{ ...card, borderRadius: '0.75rem', padding: '1rem' }}>
+            <h2 style={{ ...muted, fontSize: '0.65rem', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.75rem' }}>Today's steps</h2>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <input
+                type="number"
+                placeholder={todayData ? `${todayData.steps.toLocaleString()}` : 'e.g. 8500'}
+                value={stepsInput}
+                onChange={e => setStepsInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && saveSteps()}
+                style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', flex: 1, borderRadius: '0.5rem', padding: '0.5rem 0.75rem', fontSize: '0.875rem', minWidth: 0 }}
+              />
+              <button
+                onClick={saveSteps}
+                disabled={savingSteps}
+                style={{ background: 'var(--accent)', color: '#fff', borderRadius: '0.5rem', padding: '0.5rem 0.75rem', fontSize: '0.875rem', fontWeight: 500, border: 'none', cursor: 'pointer', opacity: savingSteps ? 0.5 : 1, whiteSpace: 'nowrap' }}
+              >
+                {savingSteps ? '...' : 'Save'}
+              </button>
+            </div>
+            {todayData && (
+              <p style={{ color: todayData.steps >= 8000 ? 'var(--green)' : 'var(--muted)', fontSize: '0.7rem', marginTop: '0.5rem' }}>
+                {todayData.steps >= 8000 ? `✓ ${todayData.steps.toLocaleString()} steps` : `${todayData.steps.toLocaleString()} — ${(8000 - todayData.steps).toLocaleString()} to go`}
+              </p>
+            )}
           </div>
-          {todayData && (
-            <p style={{ color: 'var(--green)', fontSize: '0.75rem', marginTop: '0.5rem' }}>
-              {todayData.steps >= 8000 ? `✓ Goal reached — ${todayData.steps.toLocaleString()} steps` : `${todayData.steps.toLocaleString()} steps — ${(8000 - todayData.steps).toLocaleString()} to go`}
-            </p>
-          )}
+
+          <div style={{ ...card, borderRadius: '0.75rem', padding: '1rem' }}>
+            <h2 style={{ ...muted, fontSize: '0.65rem', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.75rem' }}>Body weight</h2>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <input
+                type="number"
+                step="0.1"
+                placeholder={todayWeight ? `${todayWeight.weight}` : '105.0'}
+                value={weightInput}
+                onChange={e => setWeightInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && saveWeight()}
+                style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', flex: 1, borderRadius: '0.5rem', padding: '0.5rem 0.75rem', fontSize: '0.875rem', minWidth: 0 }}
+              />
+              <button
+                onClick={saveWeight}
+                disabled={savingWeight}
+                style={{ background: 'var(--accent)', color: '#fff', borderRadius: '0.5rem', padding: '0.5rem 0.75rem', fontSize: '0.875rem', fontWeight: 500, border: 'none', cursor: 'pointer', opacity: savingWeight ? 0.5 : 1, whiteSpace: 'nowrap' }}
+              >
+                {savingWeight ? '...' : 'Save'}
+              </button>
+            </div>
+            {bodyWeights.length > 1 && (
+              <p style={{ color: 'var(--muted)', fontSize: '0.7rem', marginTop: '0.5rem' }}>
+                {bodyWeights[1] && (bodyWeights[0].weight - bodyWeights[1].weight).toFixed(1) !== '0.0' && (
+                  <span style={{ color: bodyWeights[0].weight < bodyWeights[1].weight ? 'var(--green)' : '#f87171' }}>
+                    {bodyWeights[0].weight < bodyWeights[1].weight ? '▼' : '▲'} {Math.abs(bodyWeights[0].weight - bodyWeights[1].weight).toFixed(1)}kg from last
+                  </span>
+                )}
+              </p>
+            )}
+          </div>
         </div>
 
         <div style={{ ...card, borderRadius: '0.75rem', padding: '1rem' }}>

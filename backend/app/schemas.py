@@ -63,3 +63,15 @@ class UserCreate(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: str
+
+# --- Body Weight ---
+class BodyWeightCreate(BaseModel):
+    date: date
+    weight: float
+
+class BodyWeightOut(BaseModel):
+    id: int
+    date: date
+    weight: float
+    class Config:
+        from_attributes = True

@@ -8,11 +8,13 @@ const muted = { color: 'var(--muted)' }
 export default function Progress() {
   const [workouts, setWorkouts] = useState([])
   const [days, setDays] = useState([])
+  const [bodyWeights, setBodyWeights] = useState([])
   const [selectedEx, setSelectedEx] = useState(null)
 
   useEffect(() => {
     client.get('/workouts/').then(r => setWorkouts(r.data))
     client.get('/days/').then(r => setDays(r.data))
+    client.get('/bodyweight/').then(r => setBodyWeights(r.data))
   }, [])
 
   const getExerciseMap = () => {
@@ -46,6 +48,14 @@ export default function Progress() {
     return last14
   }
 
+  const weightData = bodyWeights
+    .slice()
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .map(w => ({
+      date: new Date(w.date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' }),
+      weight: w.weight
+    }))
+
   const selectedData = selectedEx ? exMap[selectedEx].map(d => ({
     date: new Date(d.date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' }),
     weight: d.maxWeight
@@ -53,9 +63,37 @@ export default function Progress() {
 
   const best = selectedData.length ? Math.max(...selectedData.map(d => d.weight)) : 0
 
+  const startWeight = weightData.length ? weightData[0].weight : null
+  const currentWeight = weightData.length ? weightData[weightData.length - 1].weight : null
+  const weightChange = startWeight && currentWeight ? (currentWeight - startWeight).toFixed(1) : null
+
   return (
     <div style={{ background: 'var(--bg)', minHeight: '100vh' }}>
       <div className="page-wrap">
+
+        {weightData.length > 0 && (
+          <div style={{ ...card, borderRadius: '0.75rem', padding: '1rem', marginBottom: '1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+              <h2 style={{ ...muted, fontSize: '0.65rem', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Body weight</h2>
+              {weightChange && (
+                <span style={{ fontSize: '0.75rem', fontWeight: 500, color: parseFloat(weightChange) < 0 ? 'var(--green)' : '#f87171' }}>
+                  {parseFloat(weightChange) < 0 ? '▼' : '▲'} {Math.abs(weightChange)}kg total
+                </span>
+              )}
+            </div>
+            <ResponsiveContainer width="100%" height={160}>
+              <LineChart data={weightData}>
+                <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'var(--muted)' }} />
+                <YAxis tick={{ fontSize: 10, fill: 'var(--muted)' }} unit="kg" domain={['auto', 'auto']} />
+                <Tooltip
+                  contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }}
+                  formatter={v => [`${v}kg`, 'Weight']}
+                />
+                <Line type="monotone" dataKey="weight" stroke="var(--green)" strokeWidth={2} dot={{ r: 4, fill: 'var(--green)' }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        )}
 
         <div style={{ ...card, borderRadius: '0.75rem', padding: '1rem', marginBottom: '1rem' }}>
           <h2 style={{ ...muted, fontSize: '0.65rem', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.75rem' }}>Exercise progress</h2>

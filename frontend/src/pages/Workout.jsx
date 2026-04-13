@@ -107,6 +107,7 @@ export default function Workout() {
   }
 
   const deleteWorkout = async (id) => {
+    if (!window.confirm('Delete this workout? This cannot be undone.')) return
     await client.delete(`/workouts/${id}`)
     setHistory(prev => prev.filter(w => w.id !== id))
   }
@@ -140,10 +141,11 @@ export default function Workout() {
           </div>
         </div>
 
-        {MUSCLE_GROUPS[split].map(group => (
+        {MUSCLE_GROUPS[split].map((group, idx) => (
           <MuscleGroup
             key={group}
             group={group}
+            defaultOpen={idx === 0}
             exercises={groups[group] || []}
             onAddSet={(exIdx, w, r) => addSet(group, exIdx, w, r)}
             onRemoveSet={(exIdx, si) => removeSet(group, exIdx, si)}
@@ -191,8 +193,8 @@ export default function Workout() {
   )
 }
 
-function MuscleGroup({ group, exercises, onAddSet, onRemoveSet, onAddExercise, lastSession }) {
-  const [open, setOpen] = useState(true)
+function MuscleGroup({ group, exercises, onAddSet, onRemoveSet, onAddExercise, lastSession, defaultOpen }) {
+  const [open, setOpen] = useState(defaultOpen)
   const [customEx, setCustomEx] = useState('')
   const totalSets = exercises.reduce((acc, ex) => acc + ex.sets.length, 0)
 
