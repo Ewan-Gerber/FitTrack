@@ -31,8 +31,8 @@ export default function Login({ dark, setDark }) {
     try {
       const res = await client.post('/auth/register', { email, password })
       login(res.data.access_token)
-    } catch (e) {
-      setError(e.response?.data?.detail || 'Registration failed')
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Registration failed')
     } finally {
       setLoading(false)
     }
@@ -40,35 +40,33 @@ export default function Login({ dark, setDark }) {
 
   return (
     <div style={{ background: 'var(--bg)', minHeight: '100vh' }} className="flex items-center justify-center p-4">
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)' }} className="rounded-2xl p-8 w-full max-w-sm">
-        <div className="flex justify-between items-center mb-6">
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', width: '100%', maxWidth: '420px', borderRadius: '1rem', padding: '2rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
           <div>
-            <h1 style={{ color: 'var(--accent)' }} className="text-2xl font-bold tracking-tight">FitTrack</h1>
-            <p style={{ color: 'var(--muted)' }} className="text-xs mt-0.5">Track your fitness journey</p>
+            <h1 style={{ color: 'var(--accent)', fontSize: '1.75rem', fontWeight: 700, letterSpacing: '-0.02em' }}>FitTrack</h1>
+            <p style={{ color: 'var(--muted)', fontSize: '0.875rem', marginTop: '0.25rem' }}>Track your fitness journey</p>
           </div>
           <button
             onClick={() => setDark(d => !d)}
-            style={{ color: 'var(--muted)' }}
-            className="text-lg"
+            style={{ color: 'var(--muted)', background: 'none', border: '1px solid var(--border)', borderRadius: '0.5rem', padding: '0.5rem 0.75rem', fontSize: '0.875rem', cursor: 'pointer' }}
           >
             {dark ? '☀️' : '🌙'}
           </button>
         </div>
 
         {error && (
-          <div className="bg-red-500/10 text-red-500 text-xs rounded-lg px-3 py-2 mb-4">
+          <div style={{ background: 'rgba(248,113,113,0.1)', color: '#f87171', fontSize: '0.875rem', borderRadius: '0.5rem', padding: '0.75rem 1rem', marginBottom: '1rem' }}>
             {error}
           </div>
         )}
 
-        <div className="space-y-2 mb-4">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.25rem' }}>
           <input
             type="email"
             placeholder="Email"
             value={email}
             onChange={e => setEmail(e.target.value)}
-            style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)' }}
-            className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+            style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '0.625rem', padding: '0.875rem 1rem', fontSize: '1rem', width: '100%', outline: 'none' }}
           />
           <input
             type="password"
@@ -76,25 +74,22 @@ export default function Login({ dark, setDark }) {
             value={password}
             onChange={e => setPassword(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleLogin()}
-            style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)' }}
-            className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+            style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '0.625rem', padding: '0.875rem 1rem', fontSize: '1rem', width: '100%', outline: 'none' }}
           />
         </div>
 
-        <div className="space-y-2">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
           <button
             onClick={handleLogin}
             disabled={loading}
-            style={{ background: 'var(--accent)' }}
-            className="w-full text-white rounded-lg py-2 text-sm font-medium hover:opacity-90 transition disabled:opacity-50"
+            style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: '0.625rem', padding: '0.875rem', fontSize: '1rem', fontWeight: 600, cursor: 'pointer', opacity: loading ? 0.5 : 1, width: '100%' }}
           >
             {loading ? 'Loading...' : 'Log in'}
           </button>
           <button
             onClick={handleRegister}
             disabled={loading}
-            style={{ border: '1px solid var(--border)', color: 'var(--text)' }}
-            className="w-full rounded-lg py-2 text-sm font-medium hover:bg-[var(--border)] transition disabled:opacity-50"
+            style={{ background: 'none', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: '0.625rem', padding: '0.875rem', fontSize: '1rem', fontWeight: 500, cursor: 'pointer', opacity: loading ? 0.5 : 1, width: '100%' }}
           >
             Create account
           </button>

@@ -259,10 +259,10 @@ function ExerciseRow({ exercise, onAddSet, onRemoveSet, lastSets }) {
   }
 
   return (
-    <div style={{ borderBottom: '1px solid var(--border)', padding: '0.5rem 0' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <div style={{ borderBottom: '1px solid var(--border)', padding: '0.625rem 0' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: '44px' }}>
         <div>
-          <button onClick={() => setOpen(o => !o)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text)', fontSize: '0.875rem', textAlign: 'left' }}>
+          <button onClick={() => setOpen(o => !o)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text)', fontSize: '0.9375rem', textAlign: 'left', padding: '0' }}>
             {exercise.name}
             {exercise.sets.length > 0 && (
               <span style={{ color: 'var(--muted)', marginLeft: '0.5rem', fontSize: '0.75rem' }}>{exercise.sets.length} set{exercise.sets.length > 1 ? 's' : ''}</span>
@@ -274,19 +274,22 @@ function ExerciseRow({ exercise, onAddSet, onRemoveSet, lastSets }) {
             </div>
           )}
         </div>
-        <button onClick={() => setOpen(o => !o)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', fontSize: '0.75rem' }}>
+        <button
+          onClick={() => setOpen(o => !o)}
+          style={{ background: 'none', border: '1px solid var(--border)', cursor: 'pointer', color: 'var(--accent)', fontSize: '0.8125rem', fontWeight: 500, borderRadius: '0.5rem', padding: '0.375rem 0.75rem', minHeight: '36px', minWidth: '60px' }}
+        >
           {open ? 'Done' : '+ Log'}
         </button>
       </div>
 
       {exercise.sets.length > 0 && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem', marginTop: '0.25rem' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem', marginTop: '0.375rem' }}>
           {exercise.sets.map((s, si) => (
             <span
               key={si}
               onClick={() => onRemoveSet(si)}
-              style={{ background: 'var(--accent-light)', color: 'var(--accent-text)', fontSize: '0.7rem', padding: '0.125rem 0.5rem', borderRadius: '9999px', cursor: 'pointer' }}
-              title="Click to remove"
+              style={{ background: 'var(--accent-light)', color: 'var(--accent-text)', fontSize: '0.8125rem', padding: '0.375rem 0.625rem', borderRadius: '9999px', cursor: 'pointer', minHeight: '32px', display: 'flex', alignItems: 'center' }}
+              title="Tap to remove"
             >
               {s.weight}kg×{s.reps}
             </span>
@@ -295,13 +298,13 @@ function ExerciseRow({ exercise, onAddSet, onRemoveSet, lastSets }) {
       )}
 
       {open && (
-        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.625rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <input
             type="number"
             placeholder={lastSets?.[0] ? `${lastSets[0].weight}` : 'kg'}
             value={weight}
             onChange={e => setWeight(e.target.value)}
-            style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', width: '5rem', borderRadius: '0.5rem', padding: '0.375rem 0.5rem', fontSize: '0.75rem' }}
+            style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', width: '5.5rem', borderRadius: '0.5rem', padding: '0.625rem 0.5rem', fontSize: '1rem', minHeight: '44px' }}
           />
           <input
             type="number"
@@ -309,11 +312,11 @@ function ExerciseRow({ exercise, onAddSet, onRemoveSet, lastSets }) {
             value={reps}
             onChange={e => setReps(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleAdd()}
-            style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', width: '5rem', borderRadius: '0.5rem', padding: '0.375rem 0.5rem', fontSize: '0.75rem' }}
+            style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', width: '5.5rem', borderRadius: '0.5rem', padding: '0.625rem 0.5rem', fontSize: '1rem', minHeight: '44px' }}
           />
           <button
             onClick={handleAdd}
-            style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: '0.5rem', padding: '0.375rem 0.75rem', fontSize: '0.75rem', cursor: 'pointer' }}
+            style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: '0.5rem', padding: '0.625rem 1rem', fontSize: '0.9375rem', cursor: 'pointer', minHeight: '44px' }}
           >
             + Set
           </button>
@@ -323,8 +326,7 @@ function ExerciseRow({ exercise, onAddSet, onRemoveSet, lastSets }) {
                 lastSets.forEach(s => onAddSet(s.weight, s.reps))
                 setOpen(false)
               }}
-              style={{ background: 'var(--green-light)', color: 'var(--green-text)', border: 'none', borderRadius: '0.5rem', padding: '0.375rem 0.75rem', fontSize: '0.7rem', cursor: 'pointer', whiteSpace: 'nowrap' }}
-              title="Copy last session sets"
+              style={{ background: 'var(--green-light)', color: 'var(--green-text)', border: 'none', borderRadius: '0.5rem', padding: '0.625rem 0.875rem', fontSize: '0.8125rem', cursor: 'pointer', whiteSpace: 'nowrap', minHeight: '44px' }}
             >
               Repeat last
             </button>

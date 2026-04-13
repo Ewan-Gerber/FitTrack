@@ -31,6 +31,8 @@ export default function Dashboard() {
   const [weightInput, setWeightInput] = useState('')
   const [savingSteps, setSavingSteps] = useState(false)
   const [savingWeight, setSavingWeight] = useState(false)
+  const [stepsSaved, setStepsSaved] = useState(false)
+  const [weightSaved, setWeightSaved] = useState(false)
   const today = fmtDate(new Date())
 
   useEffect(() => {
@@ -64,6 +66,8 @@ export default function Dashboard() {
       const res = await client.post('/days/', { date: today, steps: parseInt(stepsInput) })
       setDays(prev => [...prev.filter(d => d.date !== today), res.data])
       setStepsInput('')
+      setStepsSaved(true)
+      setTimeout(() => setStepsSaved(false), 2000)
     } finally {
       setSavingSteps(false)
     }
@@ -76,6 +80,8 @@ export default function Dashboard() {
       const res = await client.post('/bodyweight/', { date: today, weight: parseFloat(weightInput) })
       setBodyWeights(prev => [res.data, ...prev.filter(w => w.date !== today)])
       setWeightInput('')
+      setWeightSaved(true)
+      setTimeout(() => setWeightSaved(false), 2000)
     } finally {
       setSavingWeight(false)
     }
@@ -97,7 +103,7 @@ export default function Dashboard() {
             { val: `${week.filter(d => days.find(x => x.date === fmtDate(d) && x.steps >= 8000)).length}/7`, label: 'Steps this week' },
             { val: todayWeight ? `${todayWeight.weight}kg` : '--', label: 'Body weight' },
           ].map(({ val, label }) => (
-            <div key={label} style={{ ...card, borderRadius: '0.75rem', padding: '0.75rem', textAlign: 'center' }}>
+            <div key={label} style={{ ...card, borderRadius: '0.75rem', padding: '0.875rem 0.75rem', textAlign: 'center' }}>
               <div style={{ ...accent, fontSize: '1.5rem', fontWeight: 700 }}>{val}</div>
               <div style={{ ...muted, fontSize: '0.7rem', marginTop: '0.25rem' }}>{label}</div>
             </div>
@@ -117,7 +123,7 @@ export default function Dashboard() {
                 <div key={k} style={{
                   border: isToday ? '1.5px solid var(--accent)' : '1px solid var(--border)',
                   background: hasSteps && hasGym ? 'var(--accent-light)' : hasSteps ? 'var(--green-light)' : 'var(--bg)',
-                  borderRadius: '0.5rem', padding: '0.375rem', textAlign: 'center'
+                  borderRadius: '0.5rem', padding: '0.5rem 0.25rem', textAlign: 'center'
                 }}>
                   <div style={{ ...muted, fontSize: '0.65rem', fontWeight: 500 }}>{DAYS[i]}</div>
                   <div style={{ color: 'var(--text)', fontSize: '0.875rem', fontWeight: 600 }}>{d.getDate()}</div>
@@ -142,33 +148,47 @@ export default function Dashboard() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
           <div style={{ ...card, borderRadius: '0.75rem', padding: '1rem' }}>
             <h2 style={{ ...muted, fontSize: '0.65rem', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.75rem' }}>Today's steps</h2>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
               <input
                 type="number"
                 placeholder={todayData ? `${todayData.steps.toLocaleString()}` : 'e.g. 8500'}
                 value={stepsInput}
                 onChange={e => setStepsInput(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && saveSteps()}
-                style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', flex: 1, borderRadius: '0.5rem', padding: '0.5rem 0.75rem', fontSize: '0.875rem', minWidth: 0 }}
+                style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', flex: 1, borderRadius: '0.5rem', padding: '0.625rem 0.75rem', fontSize: '1rem', minWidth: 0 }}
               />
               <button
                 onClick={saveSteps}
                 disabled={savingSteps}
-                style={{ background: 'var(--accent)', color: '#fff', borderRadius: '0.5rem', padding: '0.5rem 0.75rem', fontSize: '0.875rem', fontWeight: 500, border: 'none', cursor: 'pointer', opacity: savingSteps ? 0.5 : 1, whiteSpace: 'nowrap' }}
+                style={{ background: 'var(--accent)', color: '#fff', borderRadius: '0.5rem', padding: '0.625rem 0.875rem', fontSize: '0.875rem', fontWeight: 500, border: 'none', cursor: 'pointer', opacity: savingSteps ? 0.5 : 1, whiteSpace: 'nowrap', minHeight: '44px' }}
               >
                 {savingSteps ? '...' : 'Save'}
               </button>
             </div>
-            {todayData && (
-              <p style={{ color: todayData.steps >= 8000 ? 'var(--green)' : 'var(--muted)', fontSize: '0.7rem', marginTop: '0.5rem' }}>
-                {todayData.steps >= 8000 ? `✓ ${todayData.steps.toLocaleString()} steps` : `${todayData.steps.toLocaleString()} — ${(8000 - todayData.steps).toLocaleString()} to go`}
-              </p>
-            )}
+            <div style={{ fontSize: '0.75rem', minHeight: '1.25rem' }}>
+              {stepsSaved && <span style={{ color: 'var(--green)' }}>✓ Saved</span>}
+              {!stepsSaved && todayData && (
+                <span style={{ color: todayData.steps >= 8000 ? 'var(--green)' : 'var(--muted)' }}>
+                  {todayData.steps >= 8000 ? `✓ ${todayData.steps.toLocaleString()} steps` : `${todayData.steps.toLocaleString()} — ${(8000 - todayData.steps).toLocaleString()} to go`}
+                </span>
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: '0.375rem', marginTop: '0.5rem' }}>
+              {[1000, 2000, 5000].map(n => (
+                <button
+                  key={n}
+                  onClick={() => setStepsInput(prev => String((parseInt(prev) || todayData?.steps || 0) + n))}
+                  style={{ flex: 1, background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--muted)', borderRadius: '0.5rem', padding: '0.375rem 0', fontSize: '0.7rem', cursor: 'pointer', minHeight: '36px' }}
+                >
+                  +{n >= 1000 ? `${n/1000}k` : n}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div style={{ ...card, borderRadius: '0.75rem', padding: '1rem' }}>
             <h2 style={{ ...muted, fontSize: '0.65rem', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.75rem' }}>Body weight</h2>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
               <input
                 type="number"
                 step="0.1"
@@ -176,25 +196,24 @@ export default function Dashboard() {
                 value={weightInput}
                 onChange={e => setWeightInput(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && saveWeight()}
-                style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', flex: 1, borderRadius: '0.5rem', padding: '0.5rem 0.75rem', fontSize: '0.875rem', minWidth: 0 }}
+                style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', flex: 1, borderRadius: '0.5rem', padding: '0.625rem 0.75rem', fontSize: '1rem', minWidth: 0 }}
               />
               <button
                 onClick={saveWeight}
                 disabled={savingWeight}
-                style={{ background: 'var(--accent)', color: '#fff', borderRadius: '0.5rem', padding: '0.5rem 0.75rem', fontSize: '0.875rem', fontWeight: 500, border: 'none', cursor: 'pointer', opacity: savingWeight ? 0.5 : 1, whiteSpace: 'nowrap' }}
+                style={{ background: 'var(--accent)', color: '#fff', borderRadius: '0.5rem', padding: '0.625rem 0.875rem', fontSize: '0.875rem', fontWeight: 500, border: 'none', cursor: 'pointer', opacity: savingWeight ? 0.5 : 1, whiteSpace: 'nowrap', minHeight: '44px' }}
               >
                 {savingWeight ? '...' : 'Save'}
               </button>
             </div>
-            {bodyWeights.length > 1 && (
-              <p style={{ color: 'var(--muted)', fontSize: '0.7rem', marginTop: '0.5rem' }}>
-                {bodyWeights[1] && (bodyWeights[0].weight - bodyWeights[1].weight).toFixed(1) !== '0.0' && (
-                  <span style={{ color: bodyWeights[0].weight < bodyWeights[1].weight ? 'var(--green)' : '#f87171' }}>
-                    {bodyWeights[0].weight < bodyWeights[1].weight ? '▼' : '▲'} {Math.abs(bodyWeights[0].weight - bodyWeights[1].weight).toFixed(1)}kg from last
-                  </span>
-                )}
-              </p>
-            )}
+            <div style={{ fontSize: '0.75rem', minHeight: '1.25rem' }}>
+              {weightSaved && <span style={{ color: 'var(--green)' }}>✓ Saved</span>}
+              {!weightSaved && bodyWeights.length > 1 && (
+                <span style={{ color: bodyWeights[0].weight < bodyWeights[1].weight ? 'var(--green)' : '#f87171' }}>
+                  {bodyWeights[0].weight < bodyWeights[1].weight ? '▼' : '▲'} {Math.abs(bodyWeights[0].weight - bodyWeights[1].weight).toFixed(1)}kg from last
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
@@ -205,12 +224,12 @@ export default function Dashboard() {
           ) : (
             <div>
               {workouts.slice(0, 5).map((w, i) => (
-                <div key={w.id} style={{ borderBottom: i < 4 ? '1px solid var(--border)' : 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0' }}>
+                <div key={w.id} style={{ borderBottom: i < Math.min(workouts.length, 5) - 1 ? '1px solid var(--border)' : 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.625rem 0', minHeight: '44px' }}>
                   <div>
-                    <span style={{ background: 'var(--accent-light)', color: 'var(--accent-text)', fontSize: '0.7rem', fontWeight: 500, padding: '0.125rem 0.5rem', borderRadius: '9999px', marginRight: '0.5rem' }}>{w.split}</span>
-                    <span style={{ ...muted, fontSize: '0.75rem' }}>{w.exercises.map(e => e.name).join(', ')}</span>
+                    <span style={{ background: 'var(--accent-light)', color: 'var(--accent-text)', fontSize: '0.7rem', fontWeight: 500, padding: '0.2rem 0.5rem', borderRadius: '9999px', marginRight: '0.5rem' }}>{w.split}</span>
+                    <span style={{ ...muted, fontSize: '0.8rem' }}>{w.exercises.map(e => e.name).join(', ')}</span>
                   </div>
-                  <span style={{ ...muted, fontSize: '0.75rem' }}>{new Date(w.date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })}</span>
+                  <span style={{ ...muted, fontSize: '0.75rem', marginLeft: '0.5rem', whiteSpace: 'nowrap' }}>{new Date(w.date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })}</span>
                 </div>
               ))}
             </div>
