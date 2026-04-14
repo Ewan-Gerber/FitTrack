@@ -11,7 +11,7 @@ const MUSCLE_GROUPS = {
   Cardio: ['Cardio'],
 }
 
-const DEFAULT_EXERCISES = {
+const BASE_EXERCISES = {
   Chest: ['Incline Flies', 'Flies', 'Incline Smith'],
   Back: ['Lat Pulldown', 'Machine Lat Pulldown', 'Rows'],
   Shoulders: ['Lateral Raises', 'Shoulder Press'],
@@ -22,6 +22,16 @@ const DEFAULT_EXERCISES = {
   Calves: ['Standing Calf Raise', 'Seated Calf Raise'],
   Cardio: ['Padle', 'Tennis', 'Running'],
 }
+
+function getExercisesForGroup(group) {
+  const custom = JSON.parse(localStorage.getItem(`custom_ex_${group}`) || '[]')
+  const all = [...BASE_EXERCISES[group] || [], ...custom]
+  return [...new Set(all)]
+}
+
+const DEFAULT_EXERCISES = new Proxy({}, {
+  get: (_, group) => getExercisesForGroup(group)
+})
 
 function fmtDate(d) {
   return d.toISOString().split('T')[0]
@@ -88,6 +98,11 @@ export default function Workout() {
 
   const addCustomExercise = (group, name) => {
     if (!name.trim()) return
+    const custom = JSON.parse(localStorage.getItem(`custom_ex_${group}`) || '[]')
+    if (!custom.includes(name.trim()) && !BASE_EXERCISES[group]?.includes(name.trim())) {
+      custom.push(name.trim())
+      localStorage.setItem(`custom_ex_${group}`, JSON.stringify(custom))
+    }
     setGroups(prev => ({
       ...prev,
       [group]: [...prev[group], { name: name.trim(), sets: [] }]
@@ -201,7 +216,6 @@ export default function Workout() {
           </div>
         </div>
         
-        {console.log('history', history, 'split', split, 'last', getLastSession(split, 'Back', history))}
         {MUSCLE_GROUPS[split].map((group, idx) => (
           <MuscleGroup
             key={group}
