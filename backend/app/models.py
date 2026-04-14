@@ -14,6 +14,7 @@ class User(Base):
     days = relationship("Day", back_populates="owner")
     workouts = relationship("Workout", back_populates="owner")
     bodyweights = relationship("BodyWeight", back_populates="owner")
+    custom_exercises = relationship("CustomExercise", back_populates="owner")
 
 
 class Day(Base):
@@ -70,3 +71,13 @@ class BodyWeight(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
 
     owner = relationship("User", back_populates="bodyweights")
+
+class CustomExercise(Base):
+    __tablename__ = "custom_exercises"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    muscle_group = Column(String, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"))
+
+    owner = relationship("User", back_populates="custom_exercises")

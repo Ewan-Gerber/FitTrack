@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from .database import engine, Base
-from .routers import days, workouts, auth, bodyweight
+from .routers import days, workouts, auth, bodyweight, exercises
 import os
 
 Base.metadata.create_all(bind=engine)
@@ -22,6 +22,7 @@ app.include_router(auth.router, prefix="/auth", tags=["auth"])
 app.include_router(days.router, prefix="/days", tags=["days"])
 app.include_router(workouts.router, prefix="/workouts", tags=["workouts"])
 app.include_router(bodyweight.router, prefix="/bodyweight", tags=["bodyweight"])
+app.include_router(exercises.router, prefix="/exercises", tags=["exercises"])
 
 frontend_path = os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "dist")
 

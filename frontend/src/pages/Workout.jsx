@@ -23,23 +23,9 @@ const BASE_EXERCISES = {
   Cardio: ['Padle', 'Tennis', 'Running'],
 }
 
-function getExercisesForGroup(group) {
-  const custom = JSON.parse(localStorage.getItem(`custom_ex_${group}`) || '[]')
-  const all = [...BASE_EXERCISES[group] || [], ...custom]
-  return [...new Set(all)]
-}
-
-const DEFAULT_EXERCISES = new Proxy({}, {
-  get: (_, group) => getExercisesForGroup(group)
-})
-
-function fmtDate(d) {
-  return d.toISOString().split('T')[0]
-}
-
 function getLastSession(split, group, history) {
   const result = {}
-  const exercises = DEFAULT_EXERCISES[group] || []
+  const exercises = BASE_EXERCISES[group] || []
   exercises.forEach(exName => {
     for (const workout of history) {
       const found = workout.exercises.find(e => e.name === exName)
@@ -52,6 +38,10 @@ function getLastSession(split, group, history) {
   return Object.keys(result).length > 0 ? result : null
 }
 
+function fmtDate(d) {
+  return d.toISOString().split('T')[0]
+}
+
 const card = { background: 'var(--surface)', border: '1px solid var(--border)' }
 const muted = { color: 'var(--muted)' }
 
@@ -60,23 +50,28 @@ export default function Workout() {
   const [date, setDate] = useState(fmtDate(new Date()))
   const [groups, setGroups] = useState({})
   const [history, setHistory] = useState([])
+  const [customExercises, setCustomExercises] = useState([])
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [editingId, setEditingId] = useState(null)
 
   useEffect(() => {
     client.get('/workouts/').then(r => setHistory(r.data))
+    client.get('/exercises/').then(r => setCustomExercises(r.data))
   }, [])
 
   useEffect(() => {
     if (!editingId) {
       const initial = {}
       MUSCLE_GROUPS[split].forEach(g => {
-        initial[g] = DEFAULT_EXERCISES[g].map(name => ({ name, sets: [] }))
+        const base = BASE_EXERCISES[g] || []
+        const custom = customExercises.filter(e => e.muscle_group === g).map(e => e.name)
+        const all = [...new Set([...base, ...custom])]
+        initial[g] = all.map(name => ({ name, sets: [] }))
       })
       setGroups(initial)
     }
-  }, [split, editingId])
+  }, [split, editingId, customExercises])
 
   const addSet = (group, exIdx, weight, reps) => {
     setGroups(prev => ({
@@ -96,17 +91,26 @@ export default function Workout() {
     }))
   }
 
-  const addCustomExercise = (group, name) => {
+  const addCustomExercise = async (group, name) => {
     if (!name.trim()) return
-    const custom = JSON.parse(localStorage.getItem(`custom_ex_${group}`) || '[]')
-    if (!custom.includes(name.trim()) && !BASE_EXERCISES[group]?.includes(name.trim())) {
-      custom.push(name.trim())
-      localStorage.setItem(`custom_ex_${group}`, JSON.stringify(custom))
+    try {
+      const res = await client.post('/exercises/', { name: name.trim(), muscle_group: group })
+      setCustomExercises(prev => {
+        const exists = prev.find(e => e.name === res.data.name && e.muscle_group === group)
+        if (exists) return prev
+        return [...prev, res.data]
+      })
+    } catch (err) {
+      console.error('Failed to save custom exercise', err)
     }
-    setGroups(prev => ({
-      ...prev,
-      [group]: [...prev[group], { name: name.trim(), sets: [] }]
-    }))
+    setGroups(prev => {
+      const exists = prev[group]?.find(e => e.name === name.trim())
+      if (exists) return prev
+      return {
+        ...prev,
+        [group]: [...(prev[group] || []), { name: name.trim(), sets: [] }]
+      }
+    })
   }
 
   const saveWorkout = async () => {
@@ -125,7 +129,10 @@ export default function Workout() {
       }
       const reset = {}
       MUSCLE_GROUPS[split].forEach(g => {
-        reset[g] = DEFAULT_EXERCISES[g].map(name => ({ name, sets: [] }))
+        const base = BASE_EXERCISES[g] || []
+        const custom = customExercises.filter(e => e.muscle_group === g).map(e => e.name)
+        const all = [...new Set([...base, ...custom])]
+        reset[g] = all.map(name => ({ name, sets: [] }))
       })
       setGroups(reset)
       setSaved(true)
@@ -141,17 +148,18 @@ export default function Workout() {
     setSplit(workout.split)
     const newGroups = {}
     MUSCLE_GROUPS[workout.split].forEach(g => {
-      newGroups[g] = DEFAULT_EXERCISES[g].map(name => ({ name, sets: [] }))
+      const base = BASE_EXERCISES[g] || []
+      const custom = customExercises.filter(e => e.muscle_group === g).map(e => e.name)
+      const all = [...new Set([...base, ...custom])]
+      newGroups[g] = all.map(name => ({ name, sets: [] }))
     })
     workout.exercises.forEach(ex => {
       let placed = false
       MUSCLE_GROUPS[workout.split].forEach(g => {
-        if (DEFAULT_EXERCISES[g]?.includes(ex.name)) {
-          const idx = newGroups[g].findIndex(e => e.name === ex.name)
-          if (idx >= 0) {
-            newGroups[g][idx] = { name: ex.name, sets: ex.sets }
-            placed = true
-          }
+        const idx = newGroups[g]?.findIndex(e => e.name === ex.name)
+        if (idx >= 0) {
+          newGroups[g][idx] = { name: ex.name, sets: ex.sets }
+          placed = true
         }
       })
       if (!placed) {
@@ -169,7 +177,10 @@ export default function Workout() {
     setEditingId(null)
     const reset = {}
     MUSCLE_GROUPS[split].forEach(g => {
-      reset[g] = DEFAULT_EXERCISES[g].map(name => ({ name, sets: [] }))
+      const base = BASE_EXERCISES[g] || []
+      const custom = customExercises.filter(e => e.muscle_group === g).map(e => e.name)
+      const all = [...new Set([...base, ...custom])]
+      reset[g] = all.map(name => ({ name, sets: [] }))
     })
     setGroups(reset)
   }
@@ -215,7 +226,7 @@ export default function Workout() {
             ))}
           </div>
         </div>
-        
+
         {MUSCLE_GROUPS[split].map((group, idx) => (
           <MuscleGroup
             key={group}
@@ -226,6 +237,7 @@ export default function Workout() {
             onAddExercise={(name) => addCustomExercise(group, name)}
             lastSession={getLastSession(split, group, history)}
             defaultOpen={idx === 0}
+            customExercises={customExercises.filter(e => e.muscle_group === group)}
           />
         ))}
 
@@ -282,7 +294,7 @@ export default function Workout() {
   )
 }
 
-function MuscleGroup({ group, exercises, onAddSet, onRemoveSet, onAddExercise, lastSession, defaultOpen }) {
+function MuscleGroup({ group, exercises, onAddSet, onRemoveSet, onAddExercise, lastSession, defaultOpen}) {
   const [open, setOpen] = useState(defaultOpen)
   const [customEx, setCustomEx] = useState('')
   const totalSets = exercises.reduce((acc, ex) => acc + ex.sets.length, 0)

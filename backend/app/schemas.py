@@ -75,3 +75,15 @@ class BodyWeightOut(BaseModel):
     weight: float
     class Config:
         from_attributes = True
+
+# --- Custom Exercise ---
+class CustomExerciseCreate(BaseModel):
+    name: str
+    muscle_group: str
+
+class CustomExerciseOut(BaseModel):
+    id: int
+    name: str
+    muscle_group: str
+    class Config:
+        from_attributes = True
