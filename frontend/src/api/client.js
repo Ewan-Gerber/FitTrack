@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const client = axios.create({
-  baseURL: 'https://fittrack-api-jczs.onrender.com',
+  baseURL: window.location.hostname === 'localhost' ? 'http://127.0.0.1:8000' : '',
 })
 
 client.interceptors.request.use((config) => {
