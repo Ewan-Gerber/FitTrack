@@ -53,3 +53,32 @@ def delete_workout(
     db.delete(workout)
     db.commit()
     return {"message": "Deleted"}
+
+@router.put("/{workout_id}", response_model=schemas.WorkoutOut)
+def update_workout(
+    workout_id: int,
+    workout: schemas.WorkoutCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    existing = db.query(models.Workout).filter(
+        models.Workout.id == workout_id,
+        models.Workout.user_id == current_user.id
+    ).first()
+    if not existing:
+        raise HTTPException(status_code=404, detail="Workout not found")
+    existing.date = workout.date
+    existing.split = workout.split
+    for ex in existing.exercises:
+        db.delete(ex)
+    db.flush()
+    for ex in workout.exercises:
+        new_ex = models.Exercise(name=ex.name, workout_id=existing.id)
+        db.add(new_ex)
+        db.flush()
+        for s in ex.sets:
+            new_set = models.Set(weight=s.weight, reps=s.reps, exercise_id=new_ex.id)
+            db.add(new_set)
+    db.commit()
+    db.refresh(existing)
+    return existing
