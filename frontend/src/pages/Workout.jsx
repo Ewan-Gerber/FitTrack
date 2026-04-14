@@ -113,6 +113,19 @@ export default function Workout() {
     })
   }
 
+  const deleteCustomExercise = async (group, name) => {
+    if (!window.confirm(`Remove ${name} from your exercises?`)) return
+    const exercise = customExercises.find(e => e.name === name && e.muscle_group === group)
+    if (exercise) {
+      try {
+        await client.delete(`/exercises/${exercise.id}`)
+        setCustomExercises(prev => prev.filter(e => e.id !== exercise.id))
+      } catch (err) {
+        console.error('Failed to delete exercise', err)
+      }
+    }
+  }
+
   const saveWorkout = async () => {
     const allExercises = Object.values(groups).flat().filter(e => e.sets.length > 0)
     if (!allExercises.length) return
@@ -237,7 +250,8 @@ export default function Workout() {
             onAddExercise={(name) => addCustomExercise(group, name)}
             lastSession={getLastSession(split, group, history)}
             defaultOpen={idx === 0}
-            customExercises={customExercises.filter(e => e.muscle_group === group)}
+            customExerciseNames={customExercises.filter(e => e.muscle_group === group).map(e => e.name)}
+            onDeleteExercise={(name) => deleteCustomExercise(group, name)}
           />
         ))}
 
@@ -294,7 +308,7 @@ export default function Workout() {
   )
 }
 
-function MuscleGroup({ group, exercises, onAddSet, onRemoveSet, onAddExercise, lastSession, defaultOpen}) {
+function MuscleGroup({ group, exercises, onAddSet, onRemoveSet, onAddExercise, lastSession, defaultOpen, customExerciseNames, onDeleteExercise}) {
   const [open, setOpen] = useState(defaultOpen)
   const [customEx, setCustomEx] = useState('')
   const totalSets = exercises.reduce((acc, ex) => acc + ex.sets.length, 0)
@@ -323,6 +337,8 @@ function MuscleGroup({ group, exercises, onAddSet, onRemoveSet, onAddExercise, l
               lastSets={lastSession?.[ex.name] || null}
               onAddSet={(w, r) => onAddSet(ei, w, r)}
               onRemoveSet={(si) => onRemoveSet(ei, si)}
+              isCustom={customExerciseNames.includes(ex.name)}
+              onDeleteExercise={() => onDeleteExercise(ex.name)}
             />
           ))}
           <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.625rem' }}>
@@ -347,7 +363,7 @@ function MuscleGroup({ group, exercises, onAddSet, onRemoveSet, onAddExercise, l
   )
 }
 
-function ExerciseRow({ exercise, onAddSet, onRemoveSet, lastSets }) {
+function ExerciseRow({ exercise, onAddSet, onRemoveSet, lastSets, isCustom, onDeleteExercise }) {
   const [weight, setWeight] = useState('')
   const [reps, setReps] = useState('')
   const [open, setOpen] = useState(false)
@@ -393,12 +409,23 @@ function ExerciseRow({ exercise, onAddSet, onRemoveSet, lastSets }) {
     <div style={{ borderBottom: '1px solid var(--border)', padding: '0.625rem 0' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: '44px' }}>
         <div>
-          <button onClick={() => setOpen(o => !o)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text)', fontSize: '0.9375rem', textAlign: 'left', padding: '0' }}>
-            {exercise.name}
-            {exercise.sets.length > 0 && (
-              <span style={{ color: 'var(--muted)', marginLeft: '0.5rem', fontSize: '0.75rem' }}>{exercise.sets.length} set{exercise.sets.length > 1 ? 's' : ''}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <button onClick={() => setOpen(o => !o)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text)', fontSize: '0.9375rem', textAlign: 'left', padding: '0' }}>
+              {exercise.name}
+              {exercise.sets.length > 0 && (
+                <span style={{ color: 'var(--muted)', marginLeft: '0.5rem', fontSize: '0.75rem' }}>{exercise.sets.length} set{exercise.sets.length > 1 ? 's' : ''}</span>
+              )}
+            </button>
+            {isCustom && (
+              <button
+                onClick={onDeleteExercise}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: '0.75rem', padding: '0.25rem', lineHeight: 1 }}
+                title="Remove exercise"
+              >
+                ✕
+              </button>
             )}
-          </button>
+          </div>
           {lastSets && lastSets.length > 0 && exercise.sets.length === 0 && (
             <div style={{ fontSize: '0.7rem', color: 'var(--muted)', marginTop: '0.125rem' }}>
               Last: {lastSets.map(s => `${s.weight}kg×${s.reps}`).join(', ')}
