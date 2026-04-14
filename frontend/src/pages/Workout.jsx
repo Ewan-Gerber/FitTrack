@@ -28,14 +28,18 @@ function fmtDate(d) {
 }
 
 function getLastSession(split, group, history) {
-  const relevant = history.filter(w => w.split === split)
-  if (!relevant.length) return null
-  const last = relevant[0]
   const result = {}
-  last.exercises.forEach(e => {
-    result[e.name] = e.sets
+  const exercises = DEFAULT_EXERCISES[group] || []
+  exercises.forEach(exName => {
+    for (const workout of history) {
+      const found = workout.exercises.find(e => e.name === exName)
+      if (found) {
+        result[exName] = found.sets
+        break
+      }
+    }
   })
-  return result
+  return Object.keys(result).length > 0 ? result : null
 }
 
 const card = { background: 'var(--surface)', border: '1px solid var(--border)' }
