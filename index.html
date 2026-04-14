@@ -10,6 +10,15 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="FitTrack" />
     <link rel="apple-touch-icon" href="/FitTrack/icon.svg" />
+    <script>
+      (function(){
+        var redirect = sessionStorage.redirect;
+        delete sessionStorage.redirect;
+        if (redirect && redirect !== location.href) {
+          history.replaceState(null, null, redirect);
+        }
+      })();
+    </script>
     <script type="module" crossorigin src="/FitTrack/assets/index-BL2IhC6P.js"></script>
     <link rel="stylesheet" crossorigin href="/FitTrack/assets/index-CN5htOJF.css">
   </head>
