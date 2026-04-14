@@ -200,7 +200,8 @@ export default function Workout() {
             ))}
           </div>
         </div>
-
+        
+        {console.log('history', history, 'split', split, 'last', getLastSession(split, 'Back', history))}
         {MUSCLE_GROUPS[split].map((group, idx) => (
           <MuscleGroup
             key={group}
