@@ -114,9 +114,9 @@ export default function Workout() {
   }
 
   const deleteCustomExercise = async (group, name) => {
-    if (!window.confirm(`Remove ${name} from your exercises?`)) return
     const exercise = customExercises.find(e => e.name === name && e.muscle_group === group)
     if (exercise) {
+      if (!window.confirm(`Remove ${name} permanently from your exercises?`)) return
       try {
         await client.delete(`/exercises/${exercise.id}`)
         setCustomExercises(prev => prev.filter(e => e.id !== exercise.id))
@@ -124,6 +124,10 @@ export default function Workout() {
         console.error('Failed to delete exercise', err)
       }
     }
+    setGroups(prev => ({
+      ...prev,
+      [group]: prev[group].filter(e => e.name !== name)
+    }))
   }
 
   const saveWorkout = async () => {
@@ -170,15 +174,29 @@ export default function Workout() {
       let placed = false
       MUSCLE_GROUPS[workout.split].forEach(g => {
         const idx = newGroups[g]?.findIndex(e => e.name === ex.name)
-        if (idx >= 0) {
+        if (idx >= 0 && !placed) {
           newGroups[g][idx] = { name: ex.name, sets: ex.sets }
           placed = true
         }
       })
       if (!placed) {
-        const firstGroup = MUSCLE_GROUPS[workout.split][0]
-        if (newGroups[firstGroup]) {
-          newGroups[firstGroup].push({ name: ex.name, sets: ex.sets })
+        const allCustom = customExercises.find(e => e.name === ex.name)
+        if (allCustom && newGroups[allCustom.muscle_group]) {
+          const idx = newGroups[allCustom.muscle_group]?.findIndex(e => e.name === ex.name)
+          if (idx >= 0) {
+            newGroups[allCustom.muscle_group][idx] = { name: ex.name, sets: ex.sets }
+            placed = true
+          } else {
+            newGroups[allCustom.muscle_group].push({ name: ex.name, sets: ex.sets })
+            placed = true
+          }
+        }
+      }
+      if (!placed) {
+        const isRelated = Object.values(BASE_EXERCISES).some(exList => exList.includes(ex.name))
+        if (!isRelated) {
+          newGroups[MUSCLE_GROUPS[workout.split][MUSCLE_GROUPS[workout.split].length - 1]].push({ name: ex.name, sets: ex.sets })
+          placed = true
         }
       }
     })
@@ -416,11 +434,11 @@ function ExerciseRow({ exercise, onAddSet, onRemoveSet, lastSets, isCustom, onDe
                 <span style={{ color: 'var(--muted)', marginLeft: '0.5rem', fontSize: '0.75rem' }}>{exercise.sets.length} set{exercise.sets.length > 1 ? 's' : ''}</span>
               )}
             </button>
-            {isCustom && (
+            {(isCustom || exercise.sets.length === 0) && onDeleteExercise && (
               <button
                 onClick={onDeleteExercise}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: '0.75rem', padding: '0.25rem', lineHeight: 1 }}
-                title="Remove exercise"
+                title="Remove from this session"
               >
                 ✕
               </button>
